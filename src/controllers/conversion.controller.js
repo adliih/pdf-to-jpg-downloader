@@ -1,7 +1,5 @@
-import { downloadPDF } from "../services/download.service.js";
 import { convertPDFToImages } from "../services/conversion.service.js";
-import { cleanupTempFiles } from "../utils/file.utils.js";
-import { generateTempFilePath } from "../utils/path.utils.js";
+import { downloadPDFAsStream } from "../services/download.service.js";
 
 export async function handlePDFConversion(req, res) {
   const { download_link: downloadLink } = req.query;
@@ -11,12 +9,9 @@ export async function handlePDFConversion(req, res) {
     return res.status(400).json({ error: "Download link is required" });
   }
 
-  const pdfPath = generateTempFilePath("pdf");
-
   try {
-    await downloadPDF(downloadLink, pdfPath);
-    const images = await convertPDFToImages(pdfPath);
-    await cleanupTempFiles(pdfPath);
+    const stream = await downloadPDFAsStream(downloadLink);
+    const images = await convertPDFToImages(stream);
 
     const isMultipleImages = images.length > 1;
 
@@ -45,7 +40,6 @@ export async function handlePDFConversion(req, res) {
     res.send(zip);
   } catch (error) {
     console.error("Error processing PDF:", error);
-    await cleanupTempFiles(pdfPath);
     res.status(500).json({
       success: false,
       error: error.message,
